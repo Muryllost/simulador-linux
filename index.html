@@ -42,20 +42,15 @@
         ::-webkit-scrollbar-track { background: #1e1e1e; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-
-        .terminal-input-wrapper {
-            display: flex;
-            align-items: center;
-        }
         
         .blinking-cursor {
             display: inline-block;
             width: 8px;
-            height: 18px;
-            background-color: #4ade80;
+            height: 17px;
+            background-color: #cbd5e1; /* Cor mais fiel ao cursor do Linux */
             animation: blink 1s step-end infinite;
-            margin-left: 2px;
-            vertical-align: middle;
+            vertical-align: text-bottom;
+            margin-left: 1px;
         }
 
         @keyframes blink {
@@ -86,29 +81,40 @@
         <!-- LEFT: Terminal (60%) -->
         <div class="flex flex-col w-full lg:w-[60%] bg-[#0c0c0c] border-r border-slate-700 shadow-2xl relative">
             <!-- Terminal Header fake -->
-            <div class="h-8 bg-[#2d2d2d] w-full flex items-center px-4 gap-2 border-b border-black">
+            <div class="h-8 bg-[#2d2d2d] w-full flex items-center px-4 gap-2 border-b border-black shrink-0">
                 <div class="w-3 h-3 rounded-full bg-red-500"></div>
                 <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                 <div class="w-3 h-3 rounded-full bg-green-500"></div>
                 <span class="text-xs text-gray-400 font-sans ml-4">admin@ubuntu: ~</span>
             </div>
 
-            <!-- Terminal Output Area -->
-            <div id="terminal-output" class="flex-1 overflow-y-auto p-4 font-mono text-sm sm:text-base text-gray-300 whitespace-pre-wrap">
-                <div class="text-green-400 mb-4">
+            <!-- Terminal Interativo Completo -->
+            <div id="terminal-container" class="flex-1 overflow-y-auto p-4 font-mono text-sm sm:text-base cursor-text" onclick="document.getElementById('cmd-input').focus()">
+                
+                <!-- Área de Outputs Anteriores -->
+                <div id="terminal-output" class="whitespace-pre-wrap flex flex-col gap-1">
+                    <div class="text-green-400 mb-4">
 Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0 virtual x86_64)
 
  * Simulador Educacional Iniciado.
  * 30 comandos Admin e 10 comandos de Rede disponíveis.
  * Digite 'help' para ver a lista de comandos ou 'clear' para limpar.
+                    </div>
                 </div>
-            </div>
 
-            <!-- Terminal Input Area -->
-            <div class="p-4 pt-0 font-mono text-sm sm:text-base flex items-center bg-[#0c0c0c]">
-                <span class="text-green-400 font-bold mr-2" id="prompt-label">admin@ubuntu:~$</span>
-                <input type="text" id="cmd-input" class="flex-1 bg-transparent border-none text-white font-mono caret-transparent" autofocus autocomplete="off" spellcheck="false">
-                <span class="blinking-cursor absolute" id="fake-cursor"></span>
+                <!-- Linha de Input Atual (Inline) -->
+                <div class="flex items-start mt-1">
+                    <span class="text-green-400 font-bold mr-2 whitespace-nowrap" id="prompt-label">admin@ubuntu:~$</span>
+                    <div class="relative flex-1 flex">
+                        <!-- Input invisível para capturar a digitação com precisão -->
+                        <input type="text" id="cmd-input" class="absolute inset-0 w-full opacity-0 z-10 cursor-text" autofocus autocomplete="off" spellcheck="false">
+                        <!-- Display visual da digitação + Cursor -->
+                        <div class="text-white break-all flex-1">
+                            <span id="cmd-text"></span><span class="blinking-cursor" id="fake-cursor"></span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -165,22 +171,21 @@ Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0 virtual x86_64)
         };
 
         const DOM = {
+            container: document.getElementById('terminal-container'),
             output: document.getElementById('terminal-output'),
             input: document.getElementById('cmd-input'),
+            cmdText: document.getElementById('cmd-text'),
             promptLabel: document.getElementById('prompt-label'),
             fakeCursor: document.getElementById('fake-cursor'),
             guidePanel: document.getElementById('guide-panel'),
             logList: document.getElementById('log-list')
         };
 
-        // Atualiza a posição do cursor falso
-        DOM.input.addEventListener('input', updateCursor);
-        function updateCursor() {
-            const val = DOM.input.value;
-            // Hack simples para posicionar o cursor (em um app real usariamos monospace width calculations)
-            // Aqui vamos apenas deixar o input gerenciar seu proprio cursor caret-white e esconder o fake quando digitando, 
-            // mas para visual "retro" mantemos a classe e focamos.
-        }
+        // Atualiza a exibição visual do comando digitado
+        DOM.input.addEventListener('input', () => {
+            DOM.cmdText.textContent = DOM.input.value;
+            DOM.container.scrollTop = DOM.container.scrollHeight;
+        });
 
         // ==========================================
         // 2. DICIONÁRIO DE COMANDOS (40 COMANDOS)
@@ -480,15 +485,16 @@ Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0 virtual x86_64)
         function appendOutput(text, isInput = false) {
             const div = document.createElement('div');
             if (isInput) {
-                div.className = "text-white mt-2 font-bold";
-                div.innerHTML = `<span class="text-green-400">${state.user}@${state.hostname}:${state.cwd === '/home/admin' ? '~' : state.cwd}$</span> ${text}`;
+                div.className = "text-white mt-1 font-bold flex flex-wrap";
+                div.innerHTML = `<span class="text-green-400 mr-2 whitespace-nowrap">${state.user}@${state.hostname}:${state.cwd === '/home/admin' ? '~' : state.cwd}$</span> <span class="break-all">${text}</span>`;
             } else {
                 div.className = "text-gray-300";
                 // Escapar HTML para evitar XSS visual
                 div.textContent = text;
             }
             DOM.output.appendChild(div);
-            DOM.output.scrollTop = DOM.output.scrollHeight;
+            // Garante que o painel principal de scroll acompanhe as novas mensagens
+            DOM.container.scrollTop = DOM.container.scrollHeight;
         }
 
         function processCommand(rawStr) {
@@ -528,28 +534,27 @@ Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0 virtual x86_64)
             if (e.key === 'Enter') {
                 const val = DOM.input.value;
                 DOM.input.value = '';
+                DOM.cmdText.textContent = ''; // Limpa o espelho visual
                 processCommand(val);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 if (state.historyIndex > 0) {
                     state.historyIndex--;
                     DOM.input.value = state.history[state.historyIndex];
+                    DOM.cmdText.textContent = DOM.input.value;
                 }
             } else if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 if (state.historyIndex < state.history.length - 1) {
                     state.historyIndex++;
                     DOM.input.value = state.history[state.historyIndex];
+                    DOM.cmdText.textContent = DOM.input.value;
                 } else {
                     state.historyIndex = state.history.length;
                     DOM.input.value = '';
+                    DOM.cmdText.textContent = '';
                 }
             }
-        });
-
-        // Focar no terminal ao clicar na área
-        DOM.output.parentElement.addEventListener('click', () => {
-            DOM.input.focus();
         });
 
     </script>
