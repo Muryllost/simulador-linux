@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubuntu Admin & Net Simulator</title>
+    
+    <!-- Fonts: Inter for UI, Fira Code for Terminal -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        ubuntu: {
+                            orange: '#E95420',
+                            dark: '#2C001E',
+                            light: '#77216F',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar for Terminal */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        .terminal-input-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        
+        .blinking-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 18px;
+            background-color: #4ade80;
+            animation: blink 1s step-end infinite;
+            margin-left: 2px;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        input:focus { outline: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-ubuntu-dark text-white px-6 py-3 flex justify-between items-center shadow-md z-10 border-b border-ubuntu-light">
+        <div class="flex items-center gap-3">
+            <i data-lucide="terminal-square" class="text-ubuntu-orange w-7 h-7"></i>
+            <h1 class="text-xl font-bold tracking-wide">Linux<span class="text-ubuntu-orange">Sim</span> Pro</h1>
+            <span class="bg-ubuntu-orange text-xs px-2 py-1 rounded-md font-bold ml-2">40 Comandos</span>
+        </div>
+        <div class="flex gap-4 text-sm font-semibold">
+            <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Engine Online</div>
+        </div>
+    </header>
+
+    <!-- Main Content Split -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- LEFT: Terminal (60%) -->
+        <div class="flex flex-col w-full lg:w-[60%] bg-[#0c0c0c] border-r border-slate-700 shadow-2xl relative">
+            <!-- Terminal Header fake -->
+            <div class="h-8 bg-[#2d2d2d] w-full flex items-center px-4 gap-2 border-b border-black">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                <span class="text-xs text-gray-400 font-sans ml-4">admin@ubuntu: ~</span>
+            </div>
+
+            <!-- Terminal Output Area -->
+            <div id="terminal-output" class="flex-1 overflow-y-auto p-4 font-mono text-sm sm:text-base text-gray-300 whitespace-pre-wrap">
+                <div class="text-green-400 mb-4">
+Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0 virtual x86_64)
+
+ * Simulador Educacional Iniciado.
+ * 30 comandos Admin e 10 comandos de Rede disponíveis.
+ * Digite 'help' para ver a lista de comandos ou 'clear' para limpar.
+                </div>
+            </div>
+
+            <!-- Terminal Input Area -->
+            <div class="p-4 pt-0 font-mono text-sm sm:text-base flex items-center bg-[#0c0c0c]">
+                <span class="text-green-400 font-bold mr-2" id="prompt-label">admin@ubuntu:~$</span>
+                <input type="text" id="cmd-input" class="flex-1 bg-transparent border-none text-white font-mono caret-transparent" autofocus autocomplete="off" spellcheck="false">
+                <span class="blinking-cursor absolute" id="fake-cursor"></span>
+            </div>
+        </div>
+
+        <!-- RIGHT: Dashboards (40%) -->
+        <div class="w-full lg:w-[40%] flex flex-col bg-slate-800">
+            
+            <!-- TOP RIGHT: Painel do Instrutor (50%) -->
+            <div class="flex-1 border-b border-slate-700 flex flex-col h-1/2">
+                <div class="bg-slate-700/50 px-4 py-2 border-b border-slate-600 flex items-center gap-2">
+                    <i data-lucide="graduation-cap" class="w-5 h-5 text-blue-400"></i>
+                    <h2 class="font-bold text-slate-100">Painel do Instrutor</h2>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1" id="guide-panel">
+                    <div class="flex flex-col items-center justify-center h-full text-slate-400 text-center space-y-4">
+                        <i data-lucide="info" class="w-12 h-12 text-slate-500"></i>
+                        <p>Execute um comando no terminal para ver a explicação detalhada de como ele funciona e o que acabou de fazer no sistema.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM RIGHT: Auditoria e Logs (50%) -->
+            <div class="flex-1 flex flex-col h-1/2">
+                <div class="bg-slate-700/50 px-4 py-2 border-b border-slate-600 flex items-center gap-2">
+                    <i data-lucide="activity" class="w-5 h-5 text-green-400"></i>
+                    <h2 class="font-bold text-slate-100">Auditoria (System Logs)</h2>
+                </div>
+                <div class="p-4 overflow-y-auto flex-1 bg-slate-900/50" id="log-panel">
+                    <ul class="space-y-2 font-mono text-xs" id="log-list">
+                        <!-- Logs serão injetados aqui -->
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // ==========================================
+        // 1. STATE & ENGINE CONFIG
+        // ==========================================
+        const state = {
+            user: 'admin',
+            hostname: 'ubuntu',
+            cwd: '/home/admin',
+            history: [],
+            historyIndex: -1,
+            fileSystem: {
+                '/home/admin': ['documentos', 'downloads', 'projetos', 'server.log', 'config.json'],
+                '/': ['bin', 'boot', 'dev', 'etc', 'home', 'root', 'var', 'var/log'],
+                '/etc': ['passwd', 'shadow', 'apt', 'network']
+            }
+        };
+
+        const DOM = {
+            output: document.getElementById('terminal-output'),
+            input: document.getElementById('cmd-input'),
+            promptLabel: document.getElementById('prompt-label'),
+            fakeCursor: document.getElementById('fake-cursor'),
+            guidePanel: document.getElementById('guide-panel'),
+            logList: document.getElementById('log-list')
+        };
+
+        // Atualiza a posição do cursor falso
+        DOM.input.addEventListener('input', updateCursor);
+        function updateCursor() {
+            const val = DOM.input.value;
+            // Hack simples para posicionar o cursor (em um app real usariamos monospace width calculations)
+            // Aqui vamos apenas deixar o input gerenciar seu proprio cursor caret-white e esconder o fake quando digitando, 
+            // mas para visual "retro" mantemos a classe e focamos.
+        }
+
+        // ==========================================
+        // 2. DICIONÁRIO DE COMANDOS (40 COMANDOS)
+        // ==========================================
+        const commands = {
+            // --- 30 COMANDOS ADMIN ---
+            "ls": {
+                type: "Admin / Arquivos",
+                execute: (args) => {
+                    const path = args[0] || state.cwd;
+                    const files = state.fileSystem[path] || ['arquivo1.txt', 'pasta2'];
+                    return files.join('  ');
+                },
+                guide: "O comando <strong>ls</strong> (list) é usado para listar os arquivos e diretórios presentes no diretório atual ou no caminho especificado."
+            },
+            "pwd": {
+                type: "Admin / Arquivos",
+                execute: () => state.cwd,
+                guide: "O comando <strong>pwd</strong> (Print Working Directory) mostra o caminho completo do diretório em que você está navegando no momento."
+            },
+            "cd": {
+                type: "Admin / Arquivos",
+                execute: (args) => {
+                    const target = args[0] || '/home/admin';
+                    state.cwd = target === '..' ? '/' : target;
+                    DOM.promptLabel.innerText = `${state.user}@${state.hostname}:${state.cwd === '/home/admin' ? '~' : state.cwd}$`;
+                    return "";
+                },
+                guide: "O comando <strong>cd</strong> (Change Directory) altera o diretório atual de trabalho. É a principal forma de navegar pelo sistema de arquivos."
+            },
+            "mkdir": {
+                type: "Admin / Arquivos",
+                execute: (args) => args[0] ? "" : "mkdir: falta operando",
+                guide: "O comando <strong>mkdir</strong> (Make Directory) cria novos diretórios (pastas) no sistema de arquivos."
+            },
+            "rm": {
+                type: "Admin / Arquivos",
+                execute: (args) => args[0] ? "" : "rm: falta operando",
+                guide: "O comando <strong>rm</strong> (Remove) apaga arquivos ou diretórios. Cuidado: no Linux, arquivos removidos por terminal geralmente não vão para uma lixeira."
+            },
+            "cp": {
+                type: "Admin / Arquivos",
+                execute: (args) => args.length >= 2 ? "" : "cp: falta operando de arquivo de destino",
+                guide: "O comando <strong>cp</strong> (Copy) copia arquivos e diretórios de um local para outro."
+            },
+            "mv": {
+                type: "Admin / Arquivos",
+                execute: (args) => args.length >= 2 ? "" : "mv: falta operando de destino",
+                guide: "O comando <strong>mv</strong> (Move) move ou renomeia arquivos e diretórios."
+            },
+            "cat": {
+                type: "Admin / Arquivos",
+                execute: (args) => args[0] ? `Conteúdo simulado de ${args[0]}...\nlinha 1\nlinha 2` : "cat: falta operando",
+                guide: "O comando <strong>cat</strong> (Concatenate) lê e exibe o conteúdo de um ou mais arquivos diretamente no terminal."
+            },
+            "nano": {
+                type: "Admin / Arquivos",
+                execute: (args) => `[Editor Nano Simulado: Aberto e Fechado para ${args[0] || 'novo_arquivo'}]`,
+                guide: "O <strong>nano</strong> é um editor de texto em linha de comando, muito usado por ser simples e intuitivo para edições rápidas de configurações."
+            },
+            "touch": {
+                type: "Admin / Arquivos",
+                execute: (args) => args[0] ? "" : "touch: falta operando",
+                guide: "O comando <strong>touch</strong> cria um arquivo vazio ou atualiza a data de modificação de um arquivo existente."
+            },
+            "sudo": {
+                type: "Admin / Permissões",
+                execute: (args) => "[sudo] senha para admin: \nExecutando comando com privilégios de Superusuário (root)...",
+                guide: "O comando <strong>sudo</strong> (Superuser Do) permite que um usuário comum execute programas com privilégios de segurança de root (administrador)."
+            },
+            "useradd": {
+                type: "Admin / Usuários",
+                execute: (args) => args[0] ? "" : "useradd: especifique o nome do usuário",
+                guide: "O comando <strong>useradd</strong> cria um novo usuário no sistema. Geralmente requer privilégios de root."
+            },
+            "usermod": {
+                type: "Admin / Usuários",
+                execute: (args) => args.length > 0 ? "" : "usermod: faltam argumentos",
+                guide: "O comando <strong>usermod</strong> modifica as propriedades de um usuário existente (como adicionar a um grupo)."
+            },
+            "passwd": {
+                type: "Admin / Usuários",
+                execute: (args) => `Alterando a senha para ${args[0] || state.user}.\nNova senha: \nSenha atualizada com sucesso.`,
+                guide: "O comando <strong>passwd</strong> é usado para alterar a senha de um usuário no sistema."
+            },
+            "chmod": {
+                type: "Admin / Permissões",
+                execute: (args) => args.length >= 2 ? "" : "chmod: falta operando",
+                guide: "O comando <strong>chmod</strong> (Change Mode) altera as permissões de acesso (leitura, gravação, execução) de arquivos e diretórios."
+            },
+            "chown": {
+                type: "Admin / Permissões",
+                execute: (args) => args.length >= 2 ? "" : "chown: falta operando",
+                guide: "O comando <strong>chown</strong> (Change Owner) muda o proprietário e o grupo associado a um arquivo ou diretório."
+            },
+            "apt": {
+                type: "Admin / Pacotes",
+                execute: (args) => {
+                    const sub = args[0];
+                    if(sub === 'update') return "Atingido:1 http://archive.ubuntu.com/ubuntu jammy InRelease\nObtendo:2 http://security.ubuntu.com/ubuntu jammy-security InRelease\nLendo listas de pacotes... Pronto";
+                    if(sub === 'install') return `Lendo listas de pacotes... Pronto\nConstruindo árvore de dependências...\nInstalando pacote ${args[1]}... Concluído.`;
+                    return "apt: argumento inválido. Use update, install ou remove.";
+                },
+                guide: "O comando <strong>apt</strong> (Advanced Package Tool) é a ferramenta principal no Ubuntu para instalar, atualizar e remover softwares."
+            },
+            "dpkg": {
+                type: "Admin / Pacotes",
+                execute: (args) => "dpkg: executando ação solicitada (simulação)",
+                guide: "O <strong>dpkg</strong> é o gerenciador de pacotes base do Debian/Ubuntu, usado para instalar arquivos .deb baixados manualmente."
+            },
+            "snap": {
+                type: "Admin / Pacotes",
+                execute: (args) => `snap ${args.join(" ")} simulação concluída.`,
+                guide: "O <strong>snap</strong> é um formato moderno de empacotamento de software desenvolvido pela Canonical (criadora do Ubuntu)."
+            },
+            "top": {
+                type: "Admin / Processos",
+                execute: () => "top - 10:20:30 up 5 days, 1 user, load average: 0.10, 0.15\nTasks: 120 total, 1 running\n%Cpu(s):  2.0 us,  1.0 sy\n[Pressione Q para sair da simulação]",
+                guide: "O comando <strong>top</strong> exibe os processos em execução no sistema em tempo real, organizados pelo uso de CPU e Memória."
+            },
+            "ps": {
+                type: "Admin / Processos",
+                execute: () => "  PID TTY          TIME CMD\n 1234 pts/0    00:00:00 bash\n 5678 pts/0    00:00:00 ps",
+                guide: "O comando <strong>ps</strong> (Process Status) tira um 'retrato' instantâneo dos processos ativos no momento em que é executado."
+            },
+            "kill": {
+                type: "Admin / Processos",
+                execute: (args) => args[0] ? `Sinal SIGTERM enviado para PID ${args[0]}` : "kill: não há argumentos o suficiente",
+                guide: "O comando <strong>kill</strong> envia um sinal (geralmente de encerramento) para um processo específico através do seu PID."
+            },
+            "df": {
+                type: "Admin / Sistema",
+                execute: () => "Sist. Arq.     Tam. Usado Disp. Uso% Montado em\n/dev/sda1       50G   20G   28G  42% /\ntmpfs          3.9G     0  3.9G   0% /run",
+                guide: "O comando <strong>df</strong> (Disk Free) relata a quantidade de espaço em disco livre e usado nos sistemas de arquivos montados."
+            },
+            "du": {
+                type: "Admin / Sistema",
+                execute: () => "12M     /home/admin/projetos\n4M      /home/admin/documentos\n16M     total",
+                guide: "O comando <strong>du</strong> (Disk Usage) estima e exibe o uso de espaço em disco de arquivos e diretórios específicos."
+            },
+            "free": {
+                type: "Admin / Sistema",
+                execute: () => "               total        used        free      shared  buff/cache   available\nMem:         8192000     4000000     2000000      100000     2192000     3500000\nSwap:        2048000           0     2048000",
+                guide: "O comando <strong>free</strong> exibe a quantidade de memória RAM livre e usada no sistema, bem como a memória Swap."
+            },
+            "systemctl": {
+                type: "Admin / Serviços",
+                execute: (args) => {
+                    const action = args[0];
+                    const service = args[1] || 'serviço';
+                    if(action === 'status') return `● ${service}.service - Serviço Simulado\n   Loaded: loaded\n   Active: active (running) since ...`;
+                    if(['start', 'stop', 'restart'].includes(action)) return `Job for ${service} executado.`;
+                    return "systemctl: comando desconhecido.";
+                },
+                guide: "O comando <strong>systemctl</strong> é o utilitário central para gerenciar serviços (daemons) e gerenciar a inicialização do sistema via Systemd."
+            },
+            "journalctl": {
+                type: "Admin / Logs",
+                execute: () => "-- Logs begin at Mon 2023-10-01 00:00:00 UTC --\nOct 01 10:00 kernel: Linux version 5.15...\nOct 01 10:05 systemd: Started Network Service.",
+                guide: "O comando <strong>journalctl</strong> é usado para consultar os logs centralizados do sistema gerados pelo Systemd."
+            },
+            "tail": {
+                type: "Admin / Logs",
+                execute: (args) => `Exibindo as últimas 10 linhas de ${args[0] || 'arquivo'}...\nLinha 90...\nLinha 95...\nLinha 100.`,
+                guide: "O comando <strong>tail</strong> mostra a parte final (geralmente 10 linhas) de um arquivo de texto. Muito usado para acompanhar logs com o argumento '-f'."
+            },
+            "grep": {
+                type: "Admin / Texto",
+                execute: (args) => args.length >= 2 ? `Resultado da busca por '${args[0]}' em ${args[1]}:\n> linha contendo ${args[0]}` : "grep: faltam argumentos",
+                guide: "O comando <strong>grep</strong> é uma ferramenta poderosa para pesquisar padrões de texto dentro de arquivos ou na saída de outros comandos."
+            },
+            "clear": {
+                type: "Admin / Utilitário",
+                execute: () => { DOM.output.innerHTML = ""; return ""; },
+                guide: "O comando <strong>clear</strong> limpa a tela do terminal, empurrando o texto anterior para cima."
+            },
+
+            // --- 10 COMANDOS DE REDE ---
+            "ping": {
+                type: "Rede / Diagnóstico",
+                execute: (args) => {
+                    const target = args[0] || "8.8.8.8";
+                    return `PING ${target} (192.168.0.1) 56(84) bytes of data.\n64 bytes from ${target}: icmp_seq=1 ttl=117 time=14.2 ms\n64 bytes from ${target}: icmp_seq=2 ttl=117 time=14.5 ms\n--- ${target} ping statistics ---\n2 packets transmitted, 2 received, 0% packet loss`;
+                },
+                guide: "O comando <strong>ping</strong> testa a conectividade e latência entre sua máquina e um servidor destino na rede enviando pacotes ICMP."
+            },
+            "traceroute": {
+                type: "Rede / Diagnóstico",
+                execute: (args) => `traceroute to ${args[0]||'google.com'} (142.250.190.46), 30 hops max\n 1  192.168.1.1  1.2 ms\n 2  10.20.30.1 (ISP)  15.4 ms\n 3  142.250.190.46  20.1 ms`,
+                guide: "O <strong>traceroute</strong> mapeia a rota que os pacotes de dados tomam pela rede até chegar ao destino, mostrando cada roteador (hop) no caminho."
+            },
+            "mtr": {
+                type: "Rede / Diagnóstico",
+                execute: (args) => `My traceroute  [v0.94]\nubuntu (192.168.1.10) -> ${args[0]||'host'}\nKeys:  Help   Display mode   Restart statistics   Order of fields\n                                       Packets               Pings\n Host                                Loss%   Snt   Last   Avg  Best  Wrst StDev\n 1. 192.168.1.1                       0.0%    10    1.5   1.4   1.1   1.8   0.2`,
+                guide: "O <strong>mtr</strong> combina a funcionalidade do ping e traceroute em uma interface dinâmica, exibindo a perda de pacotes por salto em tempo real."
+            },
+            "ip": {
+                type: "Rede / Configuração",
+                execute: (args) => {
+                    if(args[0] === 'a' || args[0] === 'addr') return "1: lo: <LOOPBACK,UP> mtu 65536\n    inet 127.0.0.1/8 scope host lo\n2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500\n    inet 192.168.1.100/24 brd 192.168.1.255";
+                    if(args[0] === 'route') return "default via 192.168.1.1 dev eth0 proto dhcp \n192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.100";
+                    return "Uso do comando ip: ip [ a | route | link ]";
+                },
+                guide: "O comando <strong>ip</strong> é a ferramenta moderna no Linux para gerenciar interfaces de rede, roteamento e endereços IP (substitui o antigo ifconfig)."
+            },
+            "ifconfig": {
+                type: "Rede / Configuração",
+                execute: () => "eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n        inet 192.168.1.100  netmask 255.255.255.0  broadcast 192.168.1.255\n        ether 00:1a:2b:3c:4d:5e",
+                guide: "O <strong>ifconfig</strong> é uma ferramenta legada para configurar e exibir parâmetros de interfaces de rede. Hoje, o comando 'ip' é o padrão recomendado."
+            },
+            "ss": {
+                type: "Rede / Conexões",
+                execute: () => "Netid  State      Recv-Q  Send-Q  Local Address:Port    Peer Address:Port\ntcp    LISTEN     0       128     0.0.0.0:22            0.0.0.0:*\ntcp    ESTAB      0       0       192.168.1.100:22      10.0.0.50:54321",
+                guide: "O comando <strong>ss</strong> (Socket Statistics) exibe conexões de rede ativas (sockets), portas abertas e estatísticas (substitui o antigo netstat)."
+            },
+            "nslookup": {
+                type: "Rede / DNS",
+                execute: (args) => `Server:		127.0.0.53\nAddress:	127.0.0.53#53\n\nNon-authoritative answer:\nName:	${args[0] || 'exemplo.com'}\nAddress: 93.184.216.34`,
+                guide: "O <strong>nslookup</strong> consulta servidores DNS para encontrar o endereço IP associado a um nome de domínio, ou vice-versa."
+            },
+            "dig": {
+                type: "Rede / DNS",
+                execute: (args) => `; <<>> DiG 9.18 <<>> ${args[0] || 'exemplo.com'}\n;; ANSWER SECTION:\n${args[0] || 'exemplo.com'}.		300	IN	A	93.184.216.34\n;; Query time: 15 msec`,
+                guide: "O comando <strong>dig</strong> (Domain Information Groper) é uma ferramenta avançada para realizar consultas DNS complexas e obter detalhes técnicos."
+            },
+            "curl": {
+                type: "Rede / Web",
+                execute: (args) => `<!DOCTYPE html>\n<html>\n<head><title>Exemplo</title></head>\n<body><h1>Resposta HTTP Simulada para ${args[0] || 'URL'}</h1></body>\n</html>`,
+                guide: "O <strong>curl</strong> transfere dados de ou para um servidor web usando protocolos como HTTP, HTTPS, FTP. Ótimo para testar APIs."
+            },
+            "wget": {
+                type: "Rede / Web",
+                execute: (args) => `Resolvendo ${args[0] || 'url'}... conectado.\nA solicitação HTTP foi enviada, aguardando resposta... 200 OK\nTamanho: 1024 (1K) [text/html]\nSalvando em: 'arquivo_baixado.html'\n\n100%[===================>] 1.024  --.-KB/s    em 0s`,
+                guide: "O <strong>wget</strong> é uma ferramenta não interativa usada para baixar arquivos da internet via terminal."
+            }
+        };
+
+        // Comando Oculto para listar a ajuda
+        commands['help'] = {
+            type: "Sistema",
+            execute: () => {
+                const keys = Object.keys(commands).filter(k => k !== 'help');
+                return "Comandos disponíveis:\n" + keys.join(", ");
+            },
+            guide: "O comando <strong>help</strong> lista as opções disponíveis no simulador."
+        };
+
+        // ==========================================
+        // 3. LÓGICA DE AUDITORIA E LOG
+        // ==========================================
+        function addLog(cmdName, fullStr, statusType) {
+            const time = new Date().toLocaleTimeString('pt-BR');
+            let statusBadge = '';
+            let logMsg = '';
+
+            if(statusType === 'success') {
+                statusBadge = '<span class="text-green-400">[OK]</span>';
+                logMsg = `Comando executado: <span class="text-white">${fullStr}</span>`;
+            } else if (statusType === 'not_found') {
+                statusBadge = '<span class="text-red-400">[ERRO]</span>';
+                logMsg = `Não encontrado: <span class="text-white">${fullStr}</span>`;
+            } else if (statusType === 'syntax') {
+                statusBadge = '<span class="text-yellow-400">[WARN]</span>';
+                logMsg = `Sintaxe inválida em: <span class="text-white">${cmdName}</span>`;
+            }
+
+            const li = document.createElement('li');
+            li.className = "border-b border-slate-700/50 pb-1";
+            li.innerHTML = `<span class="text-slate-500">${time}</span> ${statusBadge} <span class="text-slate-300">${logMsg}</span>`;
+            
+            DOM.logList.prepend(li);
+        }
+
+        // ==========================================
+        // 4. ATUALIZAÇÃO DO GUIA
+        // ==========================================
+        function updateGuide(cmdObj, cmdName) {
+            DOM.guidePanel.innerHTML = `
+                <div class="animate-fade-in space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-2xl font-bold text-white font-mono bg-slate-800 px-3 py-1 rounded border border-slate-600">${cmdName}</h3>
+                        <span class="text-xs font-bold px-2 py-1 rounded bg-blue-900/50 text-blue-300 border border-blue-700">${cmdObj.type}</span>
+                    </div>
+                    <div class="bg-slate-900 p-4 rounded-xl border-l-4 border-ubuntu-orange text-slate-300 text-sm leading-relaxed">
+                        ${cmdObj.guide}
+                    </div>
+                    <div class="text-xs text-slate-500 mt-4 border-t border-slate-700 pt-2">
+                        <strong>Simulação Didática:</strong> Este painel analisa a palavra-chave principal.
+                    </div>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 5. PARSER E MOTOR DO TERMINAL
+        // ==========================================
+        function appendOutput(text, isInput = false) {
+            const div = document.createElement('div');
+            if (isInput) {
+                div.className = "text-white mt-2 font-bold";
+                div.innerHTML = `<span class="text-green-400">${state.user}@${state.hostname}:${state.cwd === '/home/admin' ? '~' : state.cwd}$</span> ${text}`;
+            } else {
+                div.className = "text-gray-300";
+                // Escapar HTML para evitar XSS visual
+                div.textContent = text;
+            }
+            DOM.output.appendChild(div);
+            DOM.output.scrollTop = DOM.output.scrollHeight;
+        }
+
+        function processCommand(rawStr) {
+            const str = rawStr.trim();
+            if (!str) return;
+
+            // Histórico
+            state.history.push(str);
+            state.historyIndex = state.history.length;
+
+            appendOutput(str, true);
+
+            const parts = str.split(/\s+/);
+            const cmdName = parts[0].toLowerCase();
+            const args = parts.slice(1);
+
+            if (commands[cmdName]) {
+                const cmdObj = commands[cmdName];
+                const output = cmdObj.execute(args);
+                
+                if (output) appendOutput(output);
+                
+                // Análise de status baseada na saída gerada
+                if (output && (output.includes('falta operando') || output.includes('argumento inválido'))) {
+                    addLog(cmdName, str, 'syntax');
+                } else {
+                    addLog(cmdName, str, 'success');
+                    updateGuide(cmdObj, cmdName);
+                }
+            } else {
+                appendOutput(`bash: ${cmdName}: comando não encontrado`);
+                addLog(cmdName, str, 'not_found');
+            }
+        }
+
+        DOM.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = DOM.input.value;
+                DOM.input.value = '';
+                processCommand(val);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (state.historyIndex > 0) {
+                    state.historyIndex--;
+                    DOM.input.value = state.history[state.historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (state.historyIndex < state.history.length - 1) {
+                    state.historyIndex++;
+                    DOM.input.value = state.history[state.historyIndex];
+                } else {
+                    state.historyIndex = state.history.length;
+                    DOM.input.value = '';
+                }
+            }
+        });
+
+        // Focar no terminal ao clicar na área
+        DOM.output.parentElement.addEventListener('click', () => {
+            DOM.input.focus();
+        });
+
+    </script>
+</body>
+</html>
